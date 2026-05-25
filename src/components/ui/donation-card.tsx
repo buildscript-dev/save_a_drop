@@ -148,7 +148,7 @@ function PaySheet({
       </button>
 
       <p className="text-zinc-700 text-xs text-center pb-1">
-        UPI ID&nbsp;·&nbsp;{VPA}
+        UPI ID&nbsp;·&nbsp;{VPA || "Not Configured"}
       </p>
     </div>
   )
@@ -164,6 +164,10 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
   const [error,    setError]    = React.useState<string | null>(null)
 
   function handleDonate() {
+    if (!VPA || !NAME) {
+      setError("Payment configuration is missing. Please contact support.");
+      return;
+    }
     const val = custom.trim() ? parseFloat(custom) : tiers[selected].amount
     if (!val || isNaN(val) || val < 1) { setError("Minimum amount is ₹1"); return }
     setAmount(val)
@@ -266,13 +270,19 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
       {error && <p className="text-red-400/90 text-xs px-1">{error}</p>}
 
       {/* CTA */}
-      <button
-        type="button"
-        onClick={handleDonate}
-        className="rounded-full bg-white text-zinc-950 font-medium text-base w-full py-3 transition-all duration-300 hover:bg-zinc-100 active:scale-[0.97]"
-      >
-        Pay with UPI
-      </button>
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-zinc-600 text-[10px] text-center uppercase tracking-widest">
+          UPI ID: {VPA || "Not Configured"}
+        </p>
+        <button
+          type="button"
+          onClick={handleDonate}
+          className="rounded-full bg-white text-zinc-950 font-medium text-base w-full py-3 transition-all duration-300 hover:bg-zinc-100 active:scale-[0.97]"
+        >
+          Pay with UPI
+        </button>
+      </div>
+
 
       {/* Method hints */}
       <div className="flex flex-wrap items-center justify-center gap-1.5 px-1 pb-1">
