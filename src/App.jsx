@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import WaterDropCanvas from './components/WaterDropCanvas';
+import { PricingInteraction } from './components/ui/pricing-interaction';
 import './index.css';
 
 export default function App() {
@@ -18,7 +19,13 @@ export default function App() {
 
       <div className="page">
         <section className="section" />
-        <section className="section" />
+
+        <section
+          className="relative min-h-screen flex items-center justify-center"
+          style={{ pointerEvents: "auto" }}
+        >
+          <PricingInteraction />
+        </section>
       </div>
 
       {!ready && (
