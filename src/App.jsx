@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import WaterDropCanvas from './components/WaterDropCanvas';
-import { PricingInteraction } from './components/ui/pricing-interaction';
+import { DonationCard } from './components/ui/donation-card';
 import './index.css';
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
           className="relative min-h-screen flex items-center justify-center"
           style={{ pointerEvents: "auto" }}
         >
-          <PricingInteraction />
+          <DonationCard />
         </section>
       </div>
 
