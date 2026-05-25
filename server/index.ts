@@ -12,6 +12,12 @@ app.use(express.json())
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
+app.post('/api/donations', (req, res) => {
+  const { amount, vpa } = req.body;
+  console.log(`💰 Donation received: ₹${amount} from ${vpa}`);
+  res.json({ success: true, message: 'Donation recorded' });
+})
+
 app.listen(PORT, () =>
   console.log(`\n🚀 API server → http://localhost:${PORT}\n`),
 )

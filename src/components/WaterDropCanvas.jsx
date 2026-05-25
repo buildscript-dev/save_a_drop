@@ -184,7 +184,7 @@ const WaterDropCanvas = () => {
     const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
     camera.position.z = 3.2;
 
-    const geo = new THREE.SphereGeometry(0.22, 192, 192);
+    const geo = new THREE.SphereGeometry(0.22, 64, 64);
     const mat = new THREE.ShaderMaterial({
       vertexShader: VS,
       fragmentShader: FS,

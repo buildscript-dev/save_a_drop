@@ -187,7 +187,18 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
     return (
       <PaySheet
         amount={amount}
-        onPaid={() => setStage("success")}
+        onPaid={async () => {
+          try {
+            await fetch('/api/donations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount, vpa: VPA }),
+            });
+          } catch (e) {
+            console.error("Failed to log donation", e);
+          }
+          setStage("success");
+        }}
         onBack={() => setStage("select")}
       />
     )
@@ -210,12 +221,7 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
             <div
               key={tier.name}
               onClick={() => { setSelected(i); setCustom(""); setError(null) }}
-              className="flex justify-between items-center cursor-pointer p-4 rounded-2xl transition-all duration-300"
-              style={{
-                border:     `1.5px solid ${active ? "rgba(255,255,255,0.7)" : "rgba(63,63,70,0.7)"}`,
-                background: active ? "rgba(255,255,255,0.04)" : "transparent",
-                boxShadow:  active ? "0 0 24px rgba(200,230,255,0.07)" : "none",
-              }}
+              className={`flex justify-between items-center cursor-pointer p-4 rounded-2xl transition-all duration-300 border ${active ? "border-white/70 bg-white/5 shadow-[0_0_24px_rgba(200,230,255,0.07)]" : "border-zinc-700/70 bg-transparent"}`}
             >
               <div className="flex flex-col gap-0.5">
                 <p className="text-white font-medium text-base flex items-center gap-2 flex-wrap">
@@ -234,12 +240,10 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
               </div>
 
               <div
-                className="flex-shrink-0 ml-3 size-5 rounded-full border-2 flex items-center justify-center transition-all duration-300"
-                style={{ borderColor: active ? "#fff" : "#52525b" }}
+                className={`flex-shrink-0 ml-3 size-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${active ? "border-white" : "border-zinc-700"}`}
               >
                 <div
-                  className="size-2.5 rounded-full bg-white transition-all duration-300"
-                  style={{ opacity: active ? 1 : 0, transform: `scale(${active ? 1 : 0.4})` }}
+                  className={`size-2.5 rounded-full bg-white transition-all duration-300 ${active ? "opacity-100 scale-100" : "opacity-0 scale-40"}`}
                 />
               </div>
             </div>
@@ -249,11 +253,7 @@ export function DonationCard({ initialAmount }: { initialAmount?: number }) {
 
       {/* Custom amount */}
       <div
-        className="flex items-center gap-2 border rounded-2xl px-4 py-3 transition-all duration-300"
-        style={{
-          borderColor: custom.trim() ? "rgba(255,255,255,0.55)" : "rgba(63,63,70,0.7)",
-          background:  custom.trim() ? "rgba(255,255,255,0.04)" : "transparent",
-        }}
+        className={`flex items-center gap-2 border rounded-2xl px-4 py-3 transition-all duration-300 ${custom.trim() ? "border-white/55 bg-white/5" : "border-zinc-700/70 bg-transparent"}`}
       >
         <span className="text-zinc-500 text-base select-none">₹</span>
         <input
