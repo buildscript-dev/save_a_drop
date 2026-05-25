@@ -1,0 +1,68 @@
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  width: 100%;
+  background: #02030A;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+}
+
+.bubble-canvas-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bubble-canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.page {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.section {
+  height: 100vh;
+  pointer-events: none;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: #02030A;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loader {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid rgba(100, 155, 220, 0.15);
+  border-top-color: rgba(130, 175, 240, 0.65);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
