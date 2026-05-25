@@ -264,6 +264,7 @@ const WaterDropCanvas = () => {
     const onWheel = e => {
       if (targetHover > 0.5) {
         targetZoom = Math.max(1.0, Math.min(3.5, targetZoom - e.deltaY * 0.003));
+        e.preventDefault();
       } else if (scrollRippleCooldown <= 0) {
         ripple = Math.min(ripple + Math.abs(e.deltaY) * 0.004, 1.5);
         mat.uniforms.uRipplePos.value.set(0.5, 0.5);
@@ -305,7 +306,7 @@ const WaterDropCanvas = () => {
     window.addEventListener('mousedown', onMouseDown, { passive: true });
     window.addEventListener('mouseup', onMouseUp, { passive: true });
     window.addEventListener('mouseleave', onMouseLeave, { passive: true });
-    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });

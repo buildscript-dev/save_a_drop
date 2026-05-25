@@ -13,20 +13,15 @@ export default function App() {
 
   return (
     <>
-      <div className="bubble-canvas-wrap">
-        {ready && <WaterDropCanvas />}
-      </div>
+      <section className="hero-section">
+        <div className="bubble-canvas-wrap">
+          {ready && <WaterDropCanvas />}
+        </div>
+      </section>
 
-      <div className="page">
-        <section className="section" />
-
-        <section
-          className="relative min-h-screen flex items-center justify-center"
-          style={{ pointerEvents: "auto" }}
-        >
-          <DonationCard />
-        </section>
-      </div>
+      <section className="donate-section">
+        <DonationCard />
+      </section>
 
       {!ready && (
         <div className="loading-overlay">

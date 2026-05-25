@@ -1,10 +1,7 @@
 import React from "react"
 
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open(): void }
-  }
-}
+const VPA  = import.meta.env.VITE_UPI_VPA  as string
+const NAME = import.meta.env.VITE_UPI_NAME as string
 
 const tiers = [
   { name: "A Droplet", amount: 1,   label: "₹1",   description: "Clean water for one day" },
@@ -12,62 +9,50 @@ const tiers = [
   { name: "An Ocean",  amount: 100, label: "₹100", description: "Community well contribution" },
 ]
 
-const METHODS = ["UPI", "GPay", "PhonePe", "Paytm", "BHIM", "Cards"]
-
-function loadRazorpay(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.getElementById("rzp-js")) { resolve(); return }
-    const s   = document.createElement("script")
-    s.id      = "rzp-js"
-    s.src     = "https://checkout.razorpay.com/v1/checkout.js"
-    s.onload  = () => resolve()
-    s.onerror = () => reject(new Error("Failed to load Razorpay"))
-    document.body.appendChild(s)
-  })
+function upiLink(amount: number, app?: "gpay" | "phonepe" | "paytm") {
+  const base = `pa=${encodeURIComponent(VPA)}&pn=${encodeURIComponent(NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent("Donation - Orate Love")}`
+  if (app === "gpay")    return `tez://upi/pay?${base}`
+  if (app === "phonepe") return `phonepe://pay?${base}`
+  if (app === "paytm")   return `paytmmp://pay?${base}`
+  return `upi://pay?${base}`
 }
 
-// ── Success overlay ───────────────────────────────────────────────────────────
+function qrUrl(amount: number) {
+  const data = encodeURIComponent(upiLink(amount))
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=12&color=ffffff&bgcolor=18181b&data=${data}`
+}
 
-function SuccessState({
-  amount,
-  onReset,
-}: {
-  amount: number
-  onReset: () => void
-}) {
+const UPI_APPS = [
+  { id: "gpay"    as const, label: "G Pay" },
+  { id: "phonepe" as const, label: "PhonePe" },
+  { id: "paytm"   as const, label: "Paytm" },
+  { id: undefined,          label: "BHIM / Other" },
+]
+
+// ── Success ───────────────────────────────────────────────────────────────────
+
+function SuccessState({ amount, onReset }: { amount: number; onReset(): void }) {
   return (
     <div className="relative border border-zinc-800/60 rounded-[28px] p-8 w-full max-w-sm bg-zinc-950 flex flex-col items-center gap-6 overflow-hidden text-center card-glow">
-      {/* ambient glow behind orb */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-64 h-64 rounded-full success-ambient" />
       </div>
 
-      {/* ripple rings */}
       <div className="relative flex items-center justify-center mt-4">
         <div className="absolute w-28 h-28 rounded-full border border-white/10 ripple-ring ripple-1" />
         <div className="absolute w-20 h-20 rounded-full border border-white/15 ripple-ring ripple-2" />
         <div className="absolute w-14 h-14 rounded-full border border-white/20 ripple-ring ripple-3" />
-
-        {/* orb */}
         <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-white/20 to-white/5 border border-white/30 flex items-center justify-center orb-pulse">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2C12 2 5 9.5 5 14a7 7 0 0014 0C19 9.5 12 2 12 2z"
-              fill="rgba(180,220,255,0.9)"
-            />
+            <path d="M12 2C12 2 5 9.5 5 14a7 7 0 0014 0C19 9.5 12 2 12 2z" fill="rgba(180,220,255,0.9)" />
           </svg>
         </div>
       </div>
 
-      {/* copy */}
       <div className="relative z-10 success-text-rise">
-        <p className="text-white text-2xl font-light tracking-tight">
-          Thank&nbsp;you
-        </p>
+        <p className="text-white text-2xl font-light tracking-tight">Thank you</p>
         <p className="text-zinc-400 text-sm mt-1.5 leading-relaxed">
-          Your&nbsp;
-          <span className="text-white font-medium">₹{amount}</span>
-          &nbsp;brings clean water closer.
+          Your&nbsp;<span className="text-white font-medium">₹{amount}</span>&nbsp;brings clean water closer.
         </p>
       </div>
 
@@ -82,89 +67,124 @@ function SuccessState({
   )
 }
 
-// ── Main card ─────────────────────────────────────────────────────────────────
+// ── Pay sheet ─────────────────────────────────────────────────────────────────
 
-export function DonationCard() {
-  const [selected,   setSelected]   = React.useState(1)
-  const [custom,     setCustom]     = React.useState("")
-  const [loading,    setLoading]    = React.useState(false)
-  const [success,    setSuccess]    = React.useState(false)
-  const [paidAmount, setPaidAmount] = React.useState(0)
-  const [error,      setError]      = React.useState<string | null>(null)
-
-  async function handleDonate() {
-    const amount = custom.trim() ? parseFloat(custom) : tiers[selected].amount
-    if (!amount || isNaN(amount) || amount < 1) {
-      setError("Minimum amount is ₹1")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      await loadRazorpay()
-
-      const res = await fetch("/api/razorpay", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ amount }),
-      })
-      if (!res.ok) throw new Error("Could not create order")
-      const order = await res.json() as { id: string; amount: number; currency: string }
-
-      await new Promise<void>((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key:         import.meta.env.VITE_RAZORPAY_KEY_ID,
-          order_id:    order.id,
-          amount:      order.amount,
-          currency:    order.currency,
-          name:        "Orate Love",
-          description: custom.trim()
-            ? `Custom donation — ₹${amount}`
-            : tiers[selected].description,
-          theme: { color: "#18181b" },
-          modal: {
-            backdropclose: false,
-            escape:        false,
-            animation:     true,
-            ondismiss:     () => reject(new Error("cancelled")),
-          },
-          handler: async (response: {
-            razorpay_order_id:   string
-            razorpay_payment_id: string
-            razorpay_signature:  string
-          }) => {
-            try {
-              const vr = await fetch("/api/razorpay/verify", {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify(response),
-              })
-              const { verified } = await vr.json() as { verified: boolean }
-              if (verified) resolve()
-              else reject(new Error("Payment verification failed"))
-            } catch (e) { reject(e) }
-          },
-        })
-        rzp.open()
-      })
-
-      setPaidAmount(amount)
-      setSuccess(true)
-    } catch (e) {
-      if (e instanceof Error && e.message !== "cancelled")
-        setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+function PaySheet({
+  amount,
+  onPaid,
+  onBack,
+}: {
+  amount: number
+  onPaid(): void
+  onBack(): void
+}) {
+  function openApp(app?: "gpay" | "phonepe" | "paytm") {
+    window.location.href = upiLink(amount, app)
   }
 
-  if (success) {
+  return (
+    <div className="border border-zinc-800/60 rounded-[28px] p-5 shadow-2xl max-w-sm w-full flex flex-col gap-4 bg-zinc-950">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-1 pt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-zinc-600 hover:text-zinc-300 transition-colors text-lg leading-none"
+          aria-label="Back"
+        >
+          ←
+        </button>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-600">UPI Payment</p>
+          <p className="text-white text-lg font-light">
+            Donating&nbsp;<span className="font-medium">₹{amount}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* QR */}
+      <div className="flex flex-col items-center gap-2 py-2">
+        <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900 p-1">
+          <img
+            src={qrUrl(amount)}
+            alt="UPI QR code"
+            width={180}
+            height={180}
+            className="block rounded-xl"
+          />
+        </div>
+        <p className="text-zinc-600 text-xs tracking-wide">Scan with any UPI app</p>
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-zinc-800" />
+        <span className="text-zinc-700 text-xs tracking-widest uppercase">or open app</span>
+        <div className="flex-1 h-px bg-zinc-800" />
+      </div>
+
+      {/* App buttons */}
+      <div className="grid grid-cols-2 gap-2">
+        {UPI_APPS.map(({ id, label }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => openApp(id)}
+            className="border border-zinc-800 rounded-xl py-2.5 text-sm text-zinc-300 hover:border-zinc-600 hover:text-white hover:bg-zinc-900 transition-all duration-200 active:scale-95"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Confirm */}
+      <button
+        type="button"
+        onClick={onPaid}
+        className="rounded-full bg-white text-zinc-950 font-medium text-base w-full py-3 transition-all duration-300 hover:bg-zinc-100 active:scale-[0.97]"
+      >
+        I've paid ✓
+      </button>
+
+      <p className="text-zinc-700 text-xs text-center pb-1">
+        UPI ID&nbsp;·&nbsp;{VPA}
+      </p>
+    </div>
+  )
+}
+
+// ── Main card ─────────────────────────────────────────────────────────────────
+
+export function DonationCard({ initialAmount }: { initialAmount?: number }) {
+  const [stage,   setStage]   = React.useState<"select" | "pay" | "success">(initialAmount ? "pay" : "select")
+  const [selected, setSelected] = React.useState(1)
+  const [custom,   setCustom]   = React.useState("")
+  const [amount,   setAmount]   = React.useState(initialAmount ?? 0)
+  const [error,    setError]    = React.useState<string | null>(null)
+
+  function handleDonate() {
+    const val = custom.trim() ? parseFloat(custom) : tiers[selected].amount
+    if (!val || isNaN(val) || val < 1) { setError("Minimum amount is ₹1"); return }
+    setAmount(val)
+    setStage("pay")
+  }
+
+  if (stage === "success") {
     return (
       <SuccessState
-        amount={paidAmount}
-        onReset={() => { setSuccess(false); setCustom(""); setPaidAmount(0) }}
+        amount={amount}
+        onReset={() => { setStage("select"); setCustom(""); setAmount(0) }}
+      />
+    )
+  }
+
+  if (stage === "pay") {
+    return (
+      <PaySheet
+        amount={amount}
+        onPaid={() => setStage("success")}
+        onBack={() => setStage("select")}
       />
     )
   }
@@ -172,17 +192,13 @@ export function DonationCard() {
   return (
     <div className="border border-zinc-800/60 rounded-[28px] p-4 shadow-2xl max-w-sm w-full flex flex-col gap-3 bg-zinc-950">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="px-1 pt-1 pb-0.5">
-        <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-600 mb-1">
-          India · Secure Payments
-        </p>
-        <p className="text-white text-xl font-light tracking-tight">
-          Support clean water
-        </p>
+        <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-600 mb-1">India · UPI</p>
+        <p className="text-white text-xl font-light tracking-tight">Support clean water</p>
       </div>
 
-      {/* ── Tier rows ── */}
+      {/* Tier rows */}
       <div className="flex flex-col gap-2.5">
         {tiers.map((tier, i) => {
           const active = selected === i && !custom.trim()
@@ -197,7 +213,7 @@ export function DonationCard() {
                 boxShadow:  active ? "0 0 24px rgba(200,230,255,0.07)" : "none",
               }}
             >
-              <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex flex-col gap-0.5">
                 <p className="text-white font-medium text-base flex items-center gap-2 flex-wrap">
                   {tier.name}
                   {tier.popular && (
@@ -227,7 +243,7 @@ export function DonationCard() {
         })}
       </div>
 
-      {/* ── Custom amount ── */}
+      {/* Custom amount */}
       <div
         className="flex items-center gap-2 border rounded-2xl px-4 py-3 transition-all duration-300"
         style={{
@@ -247,35 +263,21 @@ export function DonationCard() {
         />
       </div>
 
-      {/* ── Error ── */}
-      {error && (
-        <p className="text-red-400/90 text-xs tracking-wide px-1">{error}</p>
-      )}
+      {error && <p className="text-red-400/90 text-xs px-1">{error}</p>}
 
-      {/* ── CTA ── */}
+      {/* CTA */}
       <button
         type="button"
-        disabled={loading}
         onClick={handleDonate}
-        className="relative overflow-hidden rounded-full bg-white text-zinc-950 font-medium text-base w-full py-3 transition-all duration-300 hover:bg-zinc-100 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+        className="rounded-full bg-white text-zinc-950 font-medium text-base w-full py-3 transition-all duration-300 hover:bg-zinc-100 active:scale-[0.97]"
       >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="size-4 border-2 border-zinc-400 border-t-zinc-950 rounded-full animate-spin" />
-            Processing…
-          </span>
-        ) : (
-          "Donate Now"
-        )}
+        Pay with UPI
       </button>
 
-      {/* ── Payment methods ── */}
+      {/* Method hints */}
       <div className="flex flex-wrap items-center justify-center gap-1.5 px-1 pb-1">
-        {METHODS.map((m) => (
-          <span
-            key={m}
-            className="text-[10px] text-zinc-600 border border-zinc-800 rounded-md px-2 py-0.5 tracking-wide"
-          >
+        {["G Pay", "PhonePe", "Paytm", "BHIM", "Any UPI"].map((m) => (
+          <span key={m} className="text-[10px] text-zinc-600 border border-zinc-800 rounded-md px-2 py-0.5 tracking-wide">
             {m}
           </span>
         ))}

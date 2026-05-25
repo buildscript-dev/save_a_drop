@@ -98,7 +98,7 @@ const impactStats = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PricingCards() {
+export default function PricingCards({ onDonate }: { onDonate?: (amount: number) => void }) {
     const [indiaMonthly, setIndiaMonthly] = useState(false)
     const [globalMonthly, setGlobalMonthly] = useState(false)
 
@@ -252,6 +252,7 @@ export default function PricingCards() {
                             </div>
 
                             <button
+                                onClick={() => onDonate?.(1)}
                                 className={[
                                     "w-full rounded-xl font-semibold text-base py-4",
                                     "bg-neutral-900 text-white",
@@ -378,6 +379,7 @@ export default function PricingCards() {
                             </div>
 
                             <button
+                                onClick={() => onDonate?.(100)}
                                 className={[
                                     "w-full rounded-xl font-semibold text-base py-4",
                                     "bg-white text-neutral-900",
